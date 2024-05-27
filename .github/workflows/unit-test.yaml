@@ -1,0 +1,33 @@
+name: "Unit Test"
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: ["*"]
+  merge_group:
+
+jobs:
+  go-test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
+    - name: Install Go
+      uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
+      with:
+        go-version-file: script/go.mod
+    - name: Go Test (script)
+      run: |
+        cd script
+        go test -v -race ./...
+    - name: Go Test (tests)
+      run: |
+        cd tests
+        go test -v -race ./...
