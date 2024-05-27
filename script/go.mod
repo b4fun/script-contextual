@@ -4,7 +4,7 @@ go 1.22.3
 
 require (
 	github.com/bitfield/script v0.22.1
-	mvdan.cc/sh/v3 v3.7.0
+	mvdan.cc/sh/v3 v3.8.0
 )
 
 require (
