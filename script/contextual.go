@@ -29,10 +29,36 @@ type Pipe struct {
 
 	// wd is the working directory for current pipe.
 	wd string
+	// env is the environment variables for current pipe.
+	// Non-empty value will be set to the exec.Command instance.
+	env []string
 }
 
 func (p *Pipe) At(dir string) *Pipe {
 	p.wd = dir
+	return p
+}
+
+// WithCurrentEnv sets the environment variables to the current process's environment.
+func (p *Pipe) WithCurrentEnv() *Pipe {
+	return p.WithEnv(os.Environ())
+}
+
+// WithEnv sets the environment variables for the current pipe.
+func (p *Pipe) WithEnv(env []string) *Pipe {
+	p.env = env
+	return p
+}
+
+// AppendEnv appends the environment variables for the current pipe.
+func (p *Pipe) AppendEnv(env ...string) *Pipe {
+	p.env = append(p.env, env...)
+	return p
+}
+
+// WithEnvKV sets the environment variable key-value pair for the current pipe.
+func (p *Pipe) WithEnvKV(key, value string) *Pipe {
+	p.env = append(p.env, key+"="+value)
 	return p
 }
 
@@ -105,6 +131,9 @@ func (p *Pipe) execContext(
 	cmd := exec.CommandContext(ctx, command, args...)
 	if p.wd != "" {
 		cmd.Dir = p.wd
+	}
+	if len(p.env) > 0 {
+		cmd.Env = p.env
 	}
 
 	return cmd
