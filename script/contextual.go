@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"text/template"
 
 	"github.com/bitfield/script"
@@ -25,13 +26,28 @@ var NewReadAutoCloser = script.NewReadAutoCloser
 type Pipe struct {
 	*script.Pipe
 
-	stderr io.Writer // captured from WithStderr
-
 	// wd is the working directory for current pipe.
 	wd string
+
+	mu *sync.Mutex // protects the following fields
+
+	stderr io.Writer // captured from WithStderr
+
 	// env is the environment variables for current pipe.
 	// Non-empty value will be set to the exec.Command instance.
 	env []string
+}
+
+func (p *Pipe) environments() []string {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.env
+}
+
+func (p *Pipe) stdErr() io.Writer {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.stderr
 }
 
 func (p *Pipe) At(dir string) *Pipe {
@@ -46,23 +62,35 @@ func (p *Pipe) WithCurrentEnv() *Pipe {
 
 // WithEnv sets the environment variables for the current pipe.
 func (p *Pipe) WithEnv(env []string) *Pipe {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	p.env = env
 	return p
 }
 
 // AppendEnv appends the environment variables for the current pipe.
 func (p *Pipe) AppendEnv(env ...string) *Pipe {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	p.env = append(p.env, env...)
 	return p
 }
 
 // WithEnvKV sets the environment variable key-value pair for the current pipe.
 func (p *Pipe) WithEnvKV(key, value string) *Pipe {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	p.env = append(p.env, key+"="+value)
 	return p
 }
 
 func (p *Pipe) WithStderr(w io.Writer) *Pipe {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	p.stderr = w
 	p.Pipe = p.Pipe.WithStderr(w)
 	return p
@@ -132,8 +160,8 @@ func (p *Pipe) execContext(
 	if p.wd != "" {
 		cmd.Dir = p.wd
 	}
-	if len(p.env) > 0 {
-		cmd.Env = p.env
+	if envs := p.environments(); len(envs) > 0 {
+		cmd.Env = envs
 	}
 
 	return cmd
@@ -150,8 +178,8 @@ func (p *Pipe) ExecContext(ctx context.Context, cmdLine string) *Pipe {
 		cmd.Stdin = r
 		cmd.Stdout = w
 		cmd.Stderr = w
-		if p.stderr != nil {
-			cmd.Stderr = p.stderr
+		if stderr := p.stdErr(); stderr != nil {
+			cmd.Stderr = stderr
 		}
 
 		if err := cmd.Start(); err != nil {
@@ -189,8 +217,8 @@ func (p *Pipe) ExecForEachContext(ctx context.Context, cmdLine string) *Pipe {
 			cmd := p.execContext(ctx, args[0], args[1:])
 			cmd.Stdout = w
 			cmd.Stderr = w
-			if p.stderr != nil {
-				cmd.Stderr = p.stderr
+			if stderr := p.stdErr(); stderr != nil {
+				cmd.Stderr = stderr
 			}
 			err = cmd.Start()
 			if err != nil {
