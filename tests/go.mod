@@ -1,6 +1,6 @@
 module tests
 
-go 1.22.3
+go 1.22.7
 
 replace github.com/b4fun/script-contextual/script => ../script
 
@@ -11,7 +11,7 @@ require (
 )
 
 require (
-	github.com/bitfield/script v0.22.1 // indirect
+	github.com/bitfield/script v0.23.0 // indirect
 	github.com/itchyny/gojq v0.12.13 // indirect
 	github.com/itchyny/timefmt-go v0.1.5 // indirect
 	golang.org/x/sys v0.10.0 // indirect
