@@ -1,16 +1,20 @@
 package script
 
-// TODO: generate constructrs from bitfield/script's source code
+// TODO: generate constructors from bitfield/script's source code
 
 import (
 	"context"
 	"net/http"
+	"sync"
 
 	"github.com/bitfield/script"
 )
 
 func newPipeFrom(pipe *script.Pipe) *Pipe {
-	return &Pipe{Pipe: pipe}
+	return &Pipe{
+		Pipe: pipe,
+		mu:   new(sync.Mutex),
+	}
 }
 
 func NewPipe() *Pipe {
